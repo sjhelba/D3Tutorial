@@ -8,6 +8,12 @@ line {
   stroke: red
 }
 
+path {
+  stroke: green;
+  stroke-width: 2px;
+  fill: none;
+}
+
 /* a path or circle within a g element with class of group0 */
 g.group0 path,
 g.group0 circle {

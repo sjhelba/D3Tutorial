@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset='utf-8'>
+        <title>D3 Example</title>
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="d3.v4.js"></script>
+        <style>
+            g.polygons path {
+                fill: white;
+                stroke: lightsteelblue;
+            }
+
+            g.polygons path:hover {
+                fill: red;
+            }
+
+            g.fuel circle {
+                fill: steelblue;
+            }
+
+        </style>
+    </head>
+    <body>
+        <script type="text/javascript">
+            var width = 960
+            var height = 500
+
+            var vertices = d3.range(100)    // d3.range(100) makes arr of numbers 0-100
+                .map(d => [Math.random() * width, Math.random() * height])  //random 2 element arrays for x and y vals of fake gas stations (since Math.random outputs decimals less than 1, we know if we multiply them by our height and width of the chart that they'll all fall within those upper limits)
+            
+            var voronoi = d3.voronoi().size([width, height]);
+            var svg = d3.select('body').append('svg').attr('width', '100%').attr('height', '100%')
+            
+            svg.append('g').attr('class', 'polygons')
+                .selectAll('path')
+                    .data(voronoi.polygons(vertices))   // generates polygons for us by calling voronoi variable and to get polygons out of it using vertices arr
+                    .enter().append('path')
+                        .attr('d', d => `M${d.join('L')}Z`)
+
+            svg.append('g').attr('class', 'fuel')   //locations of fuel stations
+                .selectAll('circle')
+                    .data(vertices)
+                    .enter().append('circle')
+                        .attr('cx', d => d[0])
+                        .attr('cy', d => d[1])
+                        .attr('r', '2.5')
+
+
+            
+        </script>
+
+    </body>
+</html>
