@@ -11,9 +11,9 @@
                 stroke: lightsteelblue;
             }
 
-            g.polygons path:hover {
-                fill: red;
-            }
+            /* g.polygons path:hover {      
+                fill: yellow;
+            } */
 
             g.fuel circle {
                 fill: steelblue;
@@ -21,32 +21,77 @@
 
         </style>
     </head>
-    <body>
+   <body> 
         <script type="text/javascript">
-            var width = 960
-            var height = 500
 
-            var vertices = d3.range(100)    // d3.range(100) makes arr of numbers 0-100
-                .map(d => [Math.random() * width, Math.random() * height])  //random 2 element arrays for x and y vals of fake gas stations (since Math.random outputs decimals less than 1, we know if we multiply them by our height and width of the chart that they'll all fall within those upper limits)
-            
-            var voronoi = d3.voronoi().size([width, height]);
-            var svg = d3.select('body').append('svg').attr('width', '100%').attr('height', '100%')
-            
-            svg.append('g').attr('class', 'polygons')
-                .selectAll('path')
-                    .data(voronoi.polygons(vertices))   // generates polygons for us by calling voronoi variable and to get polygons out of it using vertices arr
-                    .enter().append('path')
-                        .attr('d', d => `M${d.join('L')}Z`)
+        // d3 version of <body onresize="callFunction()"> event listener so that upon resize, svg is redrawn
+        d3.select(window).on('resize', callFunction)    //other event listeners are available to assign to selections
 
-            svg.append('g').attr('class', 'fuel')   //locations of fuel stations
-                .selectAll('circle')
-                    .data(vertices)
-                    .enter().append('circle')
-                        .attr('cx', d => d[0])
-                        .attr('cy', d => d[1])
-                        .attr('r', '2.5')
+            function callFunction () {
+
+                var tooltip = d3.select('body').append('div').style('opacity', '0').style('position', 'absolute')
+
+                 //so that upon resize our enters perform as expected with no orginial elements
+                var svgTest = d3.select('body').select('svg')  
+                if (!svgTest.empty()){
+                    svgTest.remove()
+                }
+
+                var width = (window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth) - 40
+                var height = (window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight) - 40
+
+                var vertices = d3.range(100)    // d3.range(100) makes arr of numbers 0-100
+                    .map(d => [Math.random() * width, Math.random() * height])  //random 2 element arrays for x and y vals of fake gas stations (since Math.random outputs decimals less than 1, we know if we multiply them by our height and width of the chart that they'll all fall within those upper limits)
+                
+                var voronoi = d3.voronoi().size([width, height]);
+                var svg = d3.select('body').append('svg').attr('width', '100%').attr('height', '100%')
+                // currently in d3 we can only enable dragging when first appending an element
+                var chartGroup = svg.append('g').call(d3.drag().on('drag', function () {d3.select(this).attr('transform', `translate(${d3.event.x}, ${d3.event.y})`)}))
 
 
+
+                // Zoom
+                chartGroup.call(d3.zoom()
+                    .scaleExtent([0.8, 2])  //limits zoom in and out (optional)
+                    .on('zoom', () => {chartGroup.attr('transform', d3.event.transform)})
+                )
+
+                chartGroup.append('g').attr('class', 'polygons')
+                    .selectAll('path')
+                        .data(voronoi.polygons(vertices))   // generates polygons for us by calling voronoi variable and to get polygons out of it using vertices arr
+                        .enter().append('path')
+                            .attr('d', d => `M${d.join('L')}Z`)
+                            //using these js event listeners rather than css :hover
+                            .on('mousemove', function(d){
+                                this.style.fill = 'yellow'
+                                tooltip.style('opacity', '1')
+                                    .style('left', d[0][0]  + 'px')  //d3.event.pageX gives x of client mouse, so this would fill the element at that coordinate if put in this instead (Same for y)
+                                    .style('top', d[0][1] + 'px')  
+                                    .html("Number of sides: " + d.length)
+                                })
+                            .on('mouseout', function(){
+                                this.style.fill = 'white'
+                                tooltip.style('opacity', '0')
+                                })
+
+                chartGroup.append('g').attr('class', 'fuel')   //locations of fuel stations
+                    .selectAll('circle')
+                        .data(vertices)
+                        .enter().append('circle')
+                            .attr('cx', d => d[0])
+                            .attr('cy', d => d[1])
+                            .attr('r', '2.5')
+
+                // select 31st polygon drawn, style it, and pretend mouse moved over it. added transition so that it would happen slowly
+                d3.select('g.polygons').select('path:nth-child(30)')
+                    .transition().duration(1000)
+                        .style('fill', 'red')
+                    .transition().duration(1000).delay(1000)
+                        .style('fill' ,'blue')
+                        .attr('transform', 'translate(10,10)')
+                d3.select('g.polygons').select('path:nth-child(30)').dispatch('mousemove')
+            }
+        callFunction()
             
         </script>
 
