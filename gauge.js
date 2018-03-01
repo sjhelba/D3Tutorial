@@ -75,23 +75,6 @@ const unitsArcGenerator = d3.arc()
     .endAngle(startAngle)
     .innerRadius(innerRadius - 2)
     .outerRadius(innerRadius - 2)
-// const foregroundArcsGenerator = d3.arc()
-//     .startAngle((d, i) => startAngle + (radiansPerWedge * i))   
-//     .endAngle((d, i) => startAngle + (radiansPerWedge * i) + d)   //this wedge's start angle plus d
-//     .innerRadius(innerRadius)
-//     .outerRadius(outerRadius)
-
-
-
-// const backgroundArcs = chartGroup.selectAll('.backgroundArcs')
-//     .data([0, 1, 2])
-//     .enter()
-//         .append('path')
-//             .attr('class', 'backgroundArc')
-//             .attr('d', threeWedgeArcsGenerator)
-//             .attr('fill', 'none')     //.attr('fill', (d, i) => backgroundColors[i])
-//             .attr('stroke', 'gray')          // BACKGROUND BORDER LINES: .attr('stroke', (d, i) => foregroundColors[i]) 
-
 
 
 const radiansOfValue = angleScale(selectedMeasurement.value) - startAngle
@@ -105,34 +88,11 @@ for(let i = numOfFullWedges; i > 0; i--){
 if (leftoverRadians > 0) foregroundWedgeFillData.push(leftoverRadians)
 
 
-// const foregroundArcs = chartGroup.selectAll('foregroundArcs')
-//     .data(foregroundWedgeFillData)
-//     .enter()
-//         .append('path')
-//             .attr('class', 'foregroundArc')
-//             .attr('d', foregroundArcsGenerator)
-//             .attr('fill', (d, i) => foregroundColors[i])
-
 const gauge = chartGroup.append('path')
     .attr('id', 'gauge')
     .attr('d', gaugeArcGenerator())
-    // .attr('stroke', 'gray')
     .attr('fill', colorScale(selectedMeasurement.value))
     
-
-// const textGroup = chartGroup.append('g')
-//     .attr('class', 'textGroup')
-
-// textGroup.append('text').selectAll('tspan')
-//     .data(selectedMeasurement.title)
-//     .enter().append('tspan')
-//         .attr('x', 0)
-//         .attr('y', (d, i) => (i * 30) - 27)
-//         .attr('class', (d, i) => `title-${i + 1}`)
-//         .attr('text-anchor', 'middle')
-//         .attr('font-size', '1.3em')
-//         .attr('fill', '#75757a')
-//         .text(d => d)
 
 const valueOutput = chartGroup.append('text')
     .attr('class', 'valueOutput')
