@@ -1,68 +1,69 @@
-var kW = {value: 1625, range: [0, 7000], units: 'kW', title: ['Plant', 'kW']}
-var tR = {value: 3000, range: [0, 6500], units: 'tR', title: ['Plant', 'tR']}
-var kW_tR = {value: Number((kW.value / tR.value).toString().slice(0, 4)), range: [2, 0], units: 'kW/tR', title: ['System', 'Efficiency']}    //remember to invert range
 
-// kW_tR.value = 0.68
+/* EXPOSED PROPERTIES */
+var gaugeTitle = 'System Efficiency'
+var efficiencyGauge = true;
+var decimalPlaces = 2
 
-var selectedMeasurement = kW_tR // based on gauge we're creating
+var efficiencyThresholds = {baseline: 1.20, target: 0.80}
+var value = 1625 / 3000  // example kW / tR
+var units = 'kW/tR'
+var minVal = 0
+var maxVal = 2
 
-var {value} = selectedMeasurement
-var {units} = selectedMeasurement
+var borderCircleWidth = '7px'
+var arcWidth = ''
 
-const backgroundColors = ['#FFC4C2', '#F7F1C3', '#C5F0DC']
-const foregroundColors = ['#21A75D', '#ffd829', '#c01616']
-const gray = '#474747'
+//TODO: fonts include style and size
+var titleFont = ''
+var unitsFont = ''
+var valueFont = ''
 
-var cx = 50;
-var cy = 50;
-var startAngle =  - Math.PI || (Math.PI - .9);    // these are measured in radians (pi * 2 radians === full circle, so in radians, 0 === 2 * pi)
-var endAngle = Math.PI || Math.PI - .9;
-var radiansPerWedge = (endAngle - startAngle) / 3;
+var borderCircleColor = '#474747'
+var backgroundColor = 'white'
+var gaugeFillColor = 'white'
+var arcColors = {nominal: '#21A75D', target: '#ffd829', baseline: '#c01616'}    // if efficiencyGauge is true, will utilize efficiencyColorScale for arc fill (all 3 arcColors), else only arcColors.nominal
+var titleColor = ''
+var unitsColor = ''
+var valueColor = ''
+// TODO: size everything based on these properties and jq.height/width
+
+
+/* SETUP DEFINITIONS */
+var cx = 0;
+var cy = 0;
+var startAngle =  - Math.PI;    // these are measured in radians (pi * 2 radians === full circle, so in radians, 0 === 2 * pi)
+var endAngle = Math.PI;
 var innerRadius = 65
 var outerRadius = 90
-var margin = {left: 200, right: 200, top: 200, bottom: 0}
+var margin = {left: 150, top: 150}
 
-const colorScale = d3.scaleQuantize()   
-    .domain([selectedMeasurement.range[1], selectedMeasurement.range[0]])
-    .range(foregroundColors)
+// implement value limit for gauge arc display so that never completely empty
+const minValForArc = (maxVal - minVal) * .95
+const valForGaugeArc = (efficiencyGauge && value < minValForArc) || (!efficiencyGauge && value > minValForArc) ? value : minValForArc;
 
+// if efficiencyGauge marked true, invert min and max vals
+if (efficiencyGauge) var [minVal,maxVal] = [maxVal,minVal];
+
+//func returns which color arc fill should be based on curr val, efficiency thresholds, and selected arc colors for up to baseline, up to target, & nominal vals
+const efficiencyColorScale = (currentValue) => {
+    if (currentValue >= efficiencyThresholds.baseline) return arcColors.baseline;
+    if (currentValue >= efficiencyThresholds.target) return arcColors.target;
+    return arcColors.nominal;
+};
+
+// returns scaling func that returns angle in radians for a value
 const angleScale = d3.scaleLinear()
-    .domain(selectedMeasurement.range)
+    .domain([minVal, maxVal])
     .range([startAngle, endAngle])
 
-const testingScale = d3.scaleLinear()
-    .domain([0,1])
-    .range([startAngle, endAngle])
 
-const svg = d3.select('body').append('svg')
-    .attr('width', '100%')
-    .attr('height', '100%')
-
-const graphicGroup = svg.append('g').attr('class', 'graphicGroup').attr('transform', `translate(${margin.left}, ${margin.top})`)
-
-const borderCircle = graphicGroup.append('circle')
-    .attr('id', 'borderCircle')
-    .attr('cx', cx)
-    .attr('cy', cy)
-    .attr('r', 100)
-    .attr('fill', 'none')
-    .attr('stroke', gray)
-    .attr('stroke-width', '7px')
-
-const chartGroup = graphicGroup.append('g').attr('class', 'chartGroup').attr('transform', `translate(${cx}, ${cy})`)
-
+// Arc Generators return d values for paths
 const gaugeArcGenerator = d3.arc()
     .startAngle(startAngle)  
-    .endAngle(angleScale(selectedMeasurement.value))
+    .endAngle(angleScale(valForGaugeArc))
     .innerRadius(innerRadius)
     .outerRadius(outerRadius)
-    .cornerRadius('50')
-
-const threeWedgeArcsGenerator = d3.arc() 
-    .startAngle((d, i) => startAngle + (radiansPerWedge * i))
-    .endAngle((d, i) => startAngle + (radiansPerWedge * (i + 1)))
-    .innerRadius(innerRadius)
-    .outerRadius(outerRadius)
+    .cornerRadius('50') //round edges of path
 
 const titleArcGenerator = d3.arc()
     .startAngle(startAngle)
@@ -77,57 +78,64 @@ const unitsArcGenerator = d3.arc()
     .outerRadius(innerRadius - 2)
 
 
-const radiansOfValue = angleScale(selectedMeasurement.value) - startAngle
-const numOfFullWedges =  Math.floor(radiansOfValue / radiansPerWedge)
-const leftoverRadians = radiansOfValue % radiansPerWedge
+/* APPEND D3 ELEMENTS INTO SVG */
+const svg = d3.select('body').append('svg')
+    .attr('width', '100%')
+    .attr('height', '100%')
 
-const foregroundWedgeFillData = []
-for(let i = numOfFullWedges; i > 0; i--){
-    foregroundWedgeFillData.push(radiansPerWedge)
-}
-if (leftoverRadians > 0) foregroundWedgeFillData.push(leftoverRadians)
+const graphicGroup = svg.append('g')
+    .attr('class', 'graphicGroup')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`)
 
+const borderCircle = graphicGroup.append('circle')  // TODO: Replace borderCircle with titlePath
+    .attr('id', 'borderCircle')
+    .attr('cx', cx)
+    .attr('cy', cy)
+    .attr('r', 100)
+    .attr('fill', 'none')
+    .attr('stroke', borderCircleColor)
+    .attr('stroke-width', borderCircleWidth)
 
-const gauge = chartGroup.append('path')
-    .attr('id', 'gauge')
+const chartGroup = graphicGroup.append('g')
+    .attr('class', 'chartGroup')
+    .attr('transform', `translate(${cx}, ${cy})`)
+
+const gaugeArc = chartGroup.append('path')
+    .attr('id', 'gaugeArc')
     .attr('d', gaugeArcGenerator())
-    .attr('fill', colorScale(selectedMeasurement.value))
-    
+    .attr('fill', efficiencyGauge ? efficiencyColorScale(value) : arcColors.nominal)  // use singular color for non-efficiency gauge or 3 color scale for efficiency gauge
 
-const valueOutput = chartGroup.append('text')
-    .attr('class', 'valueOutput')
-    .attr('x', 0)
-    .attr('y', cy - 40)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', '3.05em')
-    .attr('font-weight', 'bold')
-    .text(selectedMeasurement.value)
-
-
-
-const textPath = chartGroup.append('path')
-    .attr('id', 'textPath')
+const titlePath = chartGroup.append('path')
+    .attr('id', 'titlePath')
     .attr('d', titleArcGenerator())
     .attr('fill', 'none')
 
-
-const textPath2 = chartGroup.append('path')
-    .attr('id', 'textPath2')
+const unitsPath = chartGroup.append('path')
+    .attr('id', 'unitsPath')
     .attr('d', unitsArcGenerator())
     .attr('fill', 'none')
 
-const title = chartGroup.append("text").append("textPath")
-    .attr("xlink:href", "#textPath") //ID of path
+const titleOutput = chartGroup.append("text").append("textPath")
+    .attr("xlink:href", "#titlePath") //ID of path text follows
     .style("text-anchor","middle")
     .attr("startOffset", "25%")
     .attr('font-size', '1.3em')
     .attr('fill', '#75757a')
-    .text(selectedMeasurement.title.join(' '));
+    .text(gaugeTitle);
 
 const unitsOutput = chartGroup.append("text").append("textPath")
-    .attr("xlink:href", "#textPath2") //ID of path
+    .attr("xlink:href", "#unitsPath") //ID of path text follows
     .style("text-anchor","end")
     .attr("startOffset", "50%")
     .attr('font-size', '1.3em')
     .attr('fill', '#75757a')
-    .text(selectedMeasurement.units);
+    .text(units);
+    
+const valueOutput = chartGroup.append('text')
+    .attr('class', 'valueOutput')
+    .attr('x', 0)
+    .attr('y', cy)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', '3.05em')
+    .attr('font-weight', 'bold')
+    .text(d3.format(`,.${decimalPlaces}f`)(value))  //formats output num using num of decimal places input by user 
