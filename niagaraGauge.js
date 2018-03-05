@@ -142,10 +142,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
       ];
       
       let cx, cy, width, height, borderCircleRadius,startAngle,endAngle,gaugeArcOuterRadius,
-          gaugeArcInnerRadius, minValForArc, valForGaugeArc, minVal, maxVal,
+          gaugeArcInnerRadius, minValForArc, maxValForArc, valForGaugeArc, minVal, maxVal,
           efficiencyColorScale, angleScale, gaugeArcGenerator, titleArcGenerator,
-          unitsArcGenerator, arcTween;
-          
+          unitsArcGenerator, arcTween, lastValue;
+
       const data = {};
       const setupDefinitions = widget => {
           // FROM USER // 
@@ -153,10 +153,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
       
           const jq = widget.jq();
           width = jq.width() - 2 || 300;
-             height = jq.height() - 2 || 300;
+          height = jq.height() - 2 || 300;
       
            // CALCULATED OR HARD-CODED DEFINITIONS //
-           cx = width / 2;
+          cx = width / 2;
           cy = height / 2;
           borderCircleRadius = height < width ? (height / 2.5) - data.borderCircleWidth : (width / 2.5) - data.borderCircleWidth;
           // angles are measured in radians (pi * 2 radians === full circle, so in radians, 0 === 2 * pi)
@@ -184,6 +184,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                   valForGaugeArc = maxValForArc;
               }
           }
+          
+          // to provide start point for next transition to use
+          data.valToStartArcTransition = valForGaugeArc;
           
           // if efficiencyGauge marked true, inverts min and max vals
           [minVal,maxVal] = data.efficiencyGauge ? [data.maxVal,data.minVal] : [data.minVal,data.maxVal];
@@ -234,7 +237,11 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
   ////////////////////////////////////////////////////////////////
   
       function render(widget) {
+          lastValue = data.valToStartArcTransition;
+          
           setupDefinitions(widget);
+          
+          lastValue = lastValue || lastValue === 0 ? lastValue : minValForArc;
           
           const svg = d3.select('svg');
           
@@ -276,10 +283,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           
           const gaugeArc = chartGroup.append('path')
               .attr('id', 'gaugeArc')
-              .datum({endAngle: angleScale(minValForArc)})
+              .datum({endAngle: angleScale(lastValue)})
               // fill nominal color for non-efficiency gauge or 3 color scale for efficiency gauge. Starts with min val color prior to transition
-              .attr('fill', data.efficiencyGauge ? efficiencyColorScale(minValForArc) : data.nominalGaugeArcColor)
-              .attr('d', gaugeArcGenerator(angleScale(minValForArc)))
+              .attr('fill', data.efficiencyGauge ? efficiencyColorScale(lastValue) : data.nominalGaugeArcColor)
+              .attr('d', gaugeArcGenerator(angleScale(lastValue)))
               .transition()
                   .duration(1000)
                   // if efficiency graph, transition from min val scale color to actual val's scale color
