@@ -56,21 +56,21 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           },
           {
               name: 'additionalGaugeArcThickness',
-              value: 2
+              value: 1
           },
           {
               name: 'titleFont',
-              value: '12.0pt Nirmala UI',
+              value: '11.0pt Nirmala UI',
               typeSpec: 'gx:Font'
           },
           {
               name: 'unitsFont',
-              value: '10.0pt Nirmala UI',
+              value: '9.0pt Nirmala UI',
               typeSpec: 'gx:Font'
           },
           {
               name: 'valueFont',
-              value: 'bold 27.0pt Nirmala UI',
+              value: 'bold 24.0pt Nirmala UI',
               typeSpec: 'gx:Font'
           },
           {
@@ -152,8 +152,8 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           props.forEach(prop => {data[prop] = widget.properties().getValue(prop);});
       
           const jq = widget.jq();
-          width = jq.width() || 300;
-             height = jq.height() || 300;
+          width = jq.width() - 2 || 300;
+             height = jq.height() - 2 || 300;
       
            // CALCULATED OR HARD-CODED DEFINITIONS //
            cx = width / 2;
@@ -166,7 +166,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           gaugeArcInnerRadius = gaugeArcOuterRadius - (0.17 * borderCircleRadius) - data.additionalGaugeArcThickness;
           
           // implements value limit for gauge arc display so that never completely empty
-          minValForArc = (data.maxVal - data.minVal) * 0.95;
+          minValForArc = (maxVal - minVal) * (efficiencyGauge ? 0.95 : 0.05);
           valForGaugeArc = (data.efficiencyGauge && data.value < minValForArc) || (!data.efficiencyGauge && data.value > minValForArc) ? data.value : minValForArc;
           
           // if efficiencyGauge marked true, inverts min and max vals
@@ -188,7 +188,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
               .startAngle(startAngle)  
               .innerRadius(gaugeArcInnerRadius)
               .outerRadius(gaugeArcOuterRadius)
-              .cornerRadius('50'); // round edges of path
+              .cornerRadius('10'); // round edges of path
           
           titleArcGenerator = d3.arc()
               .startAngle(startAngle)
@@ -227,7 +227,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           
           const backgroundRect = svg.append('rect')
                 .attr('id', 'background')
-                .attr('class', 'checking')
                 .attr('x', 0)
                 .attr('y', 0)
                 .attr('width', '100%')
@@ -249,7 +248,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
               .attr('x', cx)
               .attr('y', cy)
               .attr('text-anchor', 'middle')
-              .attr('fill', 'violet')
+              .attr('fill', data.valueColor)
               .style('font', data.valueFont)
               // formats output num using num of decimal places user input
               .text(d3.format(`,.${data.decimalPlaces}f`)(data.value));
@@ -308,11 +307,12 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           
           element.addClass("ModernGaugeOuter");
       
-          d3.select(element[0]).append('div').attr('class', 'ModernGauge').append('svg')
+          d3.select(element[0]).append('svg')
+              .attr('class', 'ModernGauge')
               .attr('top', 0)
               .attr('left', 0)
-              .attr('width', "100%")
-              .attr('height', "100%");
+              .attr('width', "95%")
+              .attr('height', "95%");
       
           that.getSubscriber().attach("changed", function() {render(that);});
       };
