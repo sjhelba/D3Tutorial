@@ -12,10 +12,10 @@ var decimalPlaces = 2;
 
 var baselineEfficiencyThreshold = 1.20;
 var targetEfficiencyThreshold = 0.80;
-var value = 1625 / 3000;  // example kW / tR
+var value = 6;  // example kW / tR
 var units = 'kW / tR';
-var minVal = 0;
-var maxVal = 2;
+var minVal = 2;
+var maxVal = 5;
 
 var borderCircleWidth = 7
 var borderPadding = 2
@@ -57,9 +57,26 @@ var gaugeArcOuterRadius = borderCircleRadius - (.1 * borderCircleRadius) - borde
 var gaugeArcInnerRadius = gaugeArcOuterRadius - (.17 * borderCircleRadius) - additionalGaugeArcThickness;
 
 // implements value limit for gauge arc display so that never completely empty
-const minValForArc = (maxVal - minVal) * (efficiencyGauge ? 0.95 : 0.05);
-const valForGaugeArc = (efficiencyGauge && value < minValForArc) || (!efficiencyGauge && value > minValForArc) ? value : minValForArc;
-console.log(valForGaugeArc)
+let valForGaugeArc = value;
+const minValForArc = minVal + ((maxVal - minVal) * (efficiencyGauge ? 0.95 : 0.05));
+const maxValForArc = maxVal - ((maxVal - minVal) * (efficiencyGauge ? 0.97 : 0.03));
+if (efficiencyGauge) {
+    if (value > minValForArc) {
+        valForGaugeArc = minValForArc;
+    }
+    if (value < maxValForArc) {
+        valForGaugeArc = maxValForArc;
+    }
+} else {
+    if (value < minValForArc) {
+        valForGaugeArc = minValForArc;
+    }
+    if (value > maxValForArc) {
+        valForGaugeArc = maxValForArc;
+    }
+}
+// const valForGaugeArc = (efficiencyGauge && value < minValForArc) || (!efficiencyGauge && value > minValForArc) ? value : minValForArc;
+console.log('min/max: ', minVal, maxVal, 'trueVal: ', value, 'minValForArc: ', minValForArc, 'maxValForArc: ', maxValForArc, 'valUsedToCreateArc: ', valForGaugeArc)
 // if efficiencyGauge marked true, inverts min and max vals
 if (efficiencyGauge) var [minVal,maxVal] = [maxVal,minVal];
 

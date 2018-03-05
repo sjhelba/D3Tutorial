@@ -12,7 +12,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
       that.properties().addAll([
           {
               name: 'gaugeTitle',
-              value: 'System Efficiency'
+              value: 'Gauge Title'
           },
           {
               name: 'efficiencyGauge',
@@ -32,11 +32,11 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           },
           {
               name: 'value',
-              value: 1625 / 3000  // sample kW/tR
+              value: 1
           },
           {
               name: 'units',
-              value: 'kW / tR'
+              value: 'Units Type'
           },
           {
               name: 'minVal',
@@ -65,17 +65,17 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           },
           {
               name: 'unitsFont',
-              value: '9.0pt Nirmala UI',
+              value: '11.0pt Nirmala UI',
               typeSpec: 'gx:Font'
           },
           {
               name: 'valueFont',
-              value: 'bold 24.0pt Nirmala UI',
+              value: 'bold 18.0pt Nirmala UI',
               typeSpec: 'gx:Font'
           },
           {
               name: 'borderCircleColor',
-              value: '#474747',
+              value: '#ff474747',
               typeSpec: 'gx:Color'
           },
           {
@@ -106,17 +106,17 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           },
           {
               name: 'titleColor',
-              value: '#75757a',
+              value: '#ff404040',
               typeSpec: 'gx:Color'
           },
           {
               name: 'unitsColor',
-              value: '#75757a',
+              value: '#ff404040',
               typeSpec: 'gx:Color'
           },
           {
               name: 'valueColor',
-              value: '#000000',
+              value: '#ff000000',
               typeSpec: 'gx:Color'
           }
       ]);
@@ -166,8 +166,24 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           gaugeArcInnerRadius = gaugeArcOuterRadius - (0.17 * borderCircleRadius) - data.additionalGaugeArcThickness;
           
           // implements value limit for gauge arc display so that never completely empty
-          minValForArc = (data.maxVal - data.minVal) * (data.efficiencyGauge ? 0.95 : 0.05);
-          valForGaugeArc = (data.efficiencyGauge && data.value < minValForArc) || (!data.efficiencyGauge && data.value > minValForArc) ? data.value : minValForArc;
+          valForGaugeArc = data.value;
+          minValForArc = data.minVal + ((data.maxVal - data.minVal) * (data.efficiencyGauge ? 0.95 : 0.05));
+          maxValForArc = data.maxVal - ((data.maxVal - data.minVal) * (data.efficiencyGauge ? 0.97 : 0.03));
+          if (data.efficiencyGauge) {
+              if (data.value > minValForArc) {
+                  valForGaugeArc = minValForArc;
+              }
+              if (data.value < maxValForArc) {
+                  valForGaugeArc = maxValForArc;
+              }
+          } else {
+              if (data.value < minValForArc) {
+                  valForGaugeArc = minValForArc;
+              }
+              if (data.value > maxValForArc) {
+                  valForGaugeArc = maxValForArc;
+              }
+          }
           
           // if efficiencyGauge marked true, inverts min and max vals
           [minVal,maxVal] = data.efficiencyGauge ? [data.maxVal,data.minVal] : [data.minVal,data.maxVal];
