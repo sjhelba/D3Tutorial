@@ -166,7 +166,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           gaugeArcInnerRadius = gaugeArcOuterRadius - (0.17 * borderCircleRadius) - data.additionalGaugeArcThickness;
           
           // implements value limit for gauge arc display so that never completely empty
-          minValForArc = (maxVal - minVal) * (efficiencyGauge ? 0.95 : 0.05);
+          minValForArc = (data.maxVal - data.minVal) * (data.efficiencyGauge ? 0.95 : 0.05);
           valForGaugeArc = (data.efficiencyGauge && data.value < minValForArc) || (!data.efficiencyGauge && data.value > minValForArc) ? data.value : minValForArc;
           
           // if efficiencyGauge marked true, inverts min and max vals
