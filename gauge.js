@@ -152,6 +152,7 @@ const valueOutput = graphicGroup.append('text')
     .attr('x', cx)
     .attr('y', cy)
     .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'middle')
     .attr('fill', valueColor)
     .style('font', valueFont)
     // formats output num using num of decimal places user input

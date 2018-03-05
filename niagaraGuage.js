@@ -264,6 +264,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
               .attr('x', cx)
               .attr('y', cy)
               .attr('text-anchor', 'middle')
+              .attr('dominant-baseline', 'middle')
               .attr('fill', data.valueColor)
               .style('font', data.valueFont)
               // formats output num using num of decimal places user input
