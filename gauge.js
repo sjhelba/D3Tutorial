@@ -57,9 +57,9 @@ var gaugeArcOuterRadius = borderCircleRadius - (.1 * borderCircleRadius) - borde
 var gaugeArcInnerRadius = gaugeArcOuterRadius - (.17 * borderCircleRadius) - additionalGaugeArcThickness;
 
 // implements value limit for gauge arc display so that never completely empty
-const minValForArc = (maxVal - minVal) * .95;
+const minValForArc = (maxVal - minVal) * (efficiencyGauge ? 0.95 : 0.05);
 const valForGaugeArc = (efficiencyGauge && value < minValForArc) || (!efficiencyGauge && value > minValForArc) ? value : minValForArc;
-
+console.log(valForGaugeArc)
 // if efficiencyGauge marked true, inverts min and max vals
 if (efficiencyGauge) var [minVal,maxVal] = [maxVal,minVal];
 
@@ -79,7 +79,7 @@ const gaugeArcGenerator = d3.arc()
     .startAngle(startAngle)  
     .innerRadius(gaugeArcInnerRadius)
     .outerRadius(gaugeArcOuterRadius)
-    .cornerRadius('50'); // round edges of path
+    .cornerRadius('10'); // round edges of path
 
 const titleArcGenerator = d3.arc()
     .startAngle(startAngle)
