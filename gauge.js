@@ -1,10 +1,17 @@
+/* NOTE FOR FUTURE USE:
+const degreesToRadians = deg => (deg * Math.PI) / 180;
+*/
+
+
+
 /* EXPOSED PROPERTIES */
 
 var gaugeTitle = 'System Efficiency';
 var efficiencyGauge = true;
 var decimalPlaces = 2;
 
-var efficiencyThresholds = {baseline: 1.20, target: 0.80};
+var baselineEfficiencyThreshold = 1.20;
+var targetEfficiencyThreshold = 0.80;
 var value = 1625 / 3000;  // example kW / tR
 var units = 'kW / tR';
 var minVal = 0;
@@ -14,19 +21,20 @@ var borderCircleWidth = 7
 var borderPadding = 2
 var additionalGaugeArcThickness = 2
 
-//TODO: fonts include style and size
 var titleFont = '12.0pt Nirmala UI';
 var unitsFont = '10.0pt Nirmala UI';
 var valueFont = 'bold 27.0pt Nirmala UI';
 
 var borderCircleColor = '#474747';
-var backgroundColor = 'white';
-var borderCircleFillColor = 'white';
-// if efficiencyGauge is true, will utilize efficiencyColorScale for arc fill (all 3 gaugeArcColors), else only gaugeArcColors.nominal
-var gaugeArcColors = {nominal: '#21A75D', target: '#ffd829', baseline: '#c01616'};
+var backgroundColor = '#ffffff';
+var borderCircleFillColor = '#ffffff';
+// if efficiencyGauge is true, will utilize efficiencyColorScale for arc fill (all 3 gaugeArcColors), else only nominalGaugeArcColor
+var nominalGaugeArcColor = '#21A75D'
+var subTargetGaugeArcColor = '#ffd829'
+var subBaselineGaugeArcColor = '#c01616'
 var titleColor = '#75757a';
 var unitsColor = '#75757a';
-var valueColor = 'black';
+var valueColor = '#000000';
 
 
 
@@ -39,7 +47,6 @@ var width = '200';
 
 
 /* SETUP DEFINITIONS */
-
 var cx = width / 2;
 var cy = height / 2;
 var borderCircleRadius = height < width ? (height / 2.5) - borderCircleWidth : (width / 2.5) - borderCircleWidth 
@@ -58,9 +65,9 @@ if (efficiencyGauge) var [minVal,maxVal] = [maxVal,minVal];
 
 // func returns which color arc fill should be based on curr val, efficiency thresholds, and selected arc colors for up to baseline, up to target, & nominal vals
 const efficiencyColorScale = (currentValue) => {
-    if (currentValue >= efficiencyThresholds.baseline) return gaugeArcColors.baseline;
-    if (currentValue >= efficiencyThresholds.target) return gaugeArcColors.target;
-    return gaugeArcColors.nominal;
+    if (currentValue >= baselineEfficiencyThreshold) return subBaselineGaugeArcColor;
+    if (currentValue >= targetEfficiencyThreshold) return subTargetGaugeArcColor;
+    return nominalGaugeArcColor;
 };
 // returns scaling func that returns angle in radians for a value
 const angleScale = d3.scaleLinear()
@@ -95,12 +102,17 @@ const arcTween = newAngle => datum => t => {
 
 
 /* APPEND D3 ELEMENTS INTO SVG */
+// const body = d3.select('body')
+//     .attr('width', width)
+//     .attr('height', height)
 
 const svg = d3.select('body').append('svg')
     .attr('width', width)
     .attr('height', height);
 
-const backgroundRect = svg.append('rect')
+const graphicGroup = svg.append('g').attr('transform', 'translate(20, 10)')
+
+const backgroundRect = graphicGroup.append('rect')
   	.attr('id', 'background')
   	.attr('x', 0)
   	.attr('y', 0)
@@ -109,7 +121,7 @@ const backgroundRect = svg.append('rect')
   	.attr('stroke-width', '0')
   	.attr('fill', backgroundColor);
 
-const borderCircle = svg.append('circle')  // TODO: Replace borderCircle with titlePath
+const borderCircle = graphicGroup.append('circle')  // TODO: Replace borderCircle with titlePath
     .attr('id', 'borderCircle')
     .attr('cx', cx)
     .attr('cy', cy)
@@ -118,7 +130,7 @@ const borderCircle = svg.append('circle')  // TODO: Replace borderCircle with ti
     .attr('stroke', borderCircleColor)
     .attr('stroke-width', borderCircleWidth);
     
-const valueOutput = svg.append('text')
+const valueOutput = graphicGroup.append('text')
     .attr('class', 'valueOutput')
     .attr('x', cx)
     .attr('y', cy)
@@ -128,7 +140,7 @@ const valueOutput = svg.append('text')
     // formats output num using num of decimal places user input
     .text(d3.format(`,.${decimalPlaces}f`)(value));
 
-const chartGroup = svg.append('g')
+const chartGroup = graphicGroup.append('g')
     .attr('class', 'chartGroup')
     .attr('transform', `translate(${cx}, ${cy})`);
 
@@ -136,12 +148,12 @@ const gaugeArc = chartGroup.append('path')
     .attr('id', 'gaugeArc')
     .datum({endAngle: angleScale(minValForArc)})
     // fill nominal color for non-efficiency gauge or 3 color scale for efficiency gauge. Starts with min val color prior to transition
-    .attr('fill', efficiencyGauge ? efficiencyColorScale(minValForArc) : gaugeArcColors.nominal)
+    .attr('fill', efficiencyGauge ? efficiencyColorScale(minValForArc) : nominalGaugeArcColor)
     .attr('d', gaugeArcGenerator(angleScale(minValForArc)))
     .transition()
         .duration(1000)
         // if efficiency graph, transition from min val scale color to actual val's scale color
-        .attr('fill', efficiencyGauge ? efficiencyColorScale(value) : gaugeArcColors.nominal)
+        .attr('fill', efficiencyGauge ? efficiencyColorScale(value) : nominalGaugeArcColor)
         // gradually transition end angle from minValForArc to true val angle
         .attrTween('d', arcTween(angleScale(valForGaugeArc)));
 
