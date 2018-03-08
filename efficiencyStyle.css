@@ -1,0 +1,22 @@
+body {
+    margin: 0;
+    position: absolute;
+    height: 100%;
+    font: 10pt Nirmala UI;
+  }
+  
+text {
+  font: 8pt Nirmala UI;
+}
+
+.legend text {
+  font-size: 9pt;
+}
+
+.category:hover > text{
+  font-weight: bold
+}
+
+.category:hover > rect{
+  stroke: #444444;
+}
