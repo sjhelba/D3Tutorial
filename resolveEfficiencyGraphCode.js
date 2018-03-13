@@ -4,10 +4,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     ////////////////////////////////////////////////////////////////
     // Define Widget Constructor & Add Exposed Properties
     ////////////////////////////////////////////////////////////////
+	
+    alert('version 7');
+    
+    // function that makes '3 digit month'-'4 digit year' into JS date
+    const parseDate = d3.timeParse('%b-%Y');
 
-    var ModernEfficiencyGraph = function () {
-        alert('instance of ModernEfficiencyGraph run');
-        
+
+    var ModernEfficiencyGraph = function () {        
         var that = this;
         Widget.apply(this, arguments);
 
@@ -47,7 +51,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             {
                 name: 'tooltipFill',
                 value: 'white',
-                typeSpec: 'gxColor'
+                typeSpec: 'gx:Color'
             },
             {
                 name: 'dataPointRadius',
@@ -120,17 +124,17 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             },
             {
                 name: 'baselineHistoryOrd',
-                value: 'history:^BaselineTrend',
+                value: 'history:^SystemAnnualEfficiencyBaseline',
                 typeSpec: 'baja:Ord'
             },
             {
                 name: 'targetHistoryOrd',
-                value: 'history:^TargetTrend',
+                value: 'history:^SystemAnnualEfficiencyTarget',
                 typeSpec: 'baja:Ord'
             },
             {
                 name: 'actualTrendHistoryOrd',
-                value: 'history:^ActualTrend',
+                value: 'history:^SystemEfficiencyMeasured',
                 typeSpec: 'baja:Ord'
             }
         ]);
@@ -154,30 +158,24 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     ];
 
     const setupDefinitions = widget => {
-        alert('setupDefinitions run');
         const data = {};
         // FROM USER // 
         widgetProperties.forEach(prop => { data[prop] = widget.properties().getValue(prop); });
 
         // FROM JQ //
         const jq = widget.jq();
-        data.graphicWidth = jq.width() || 625;
-        data.graphicHeight = jq.height() || 300;
+        data.graphicWidth = jq.width() * 0.95 || 625;
+        data.graphicHeight = jq.height() * 0.95 || 300;
 
         // DEFINITIONS CALCULATED FROM USER AND JQ PROPERTIES //
         data.legendHeight = 0.166 * data.graphicHeight || 50;
         data.legendWidth = 0.128 * data.graphicWidth || 80;
 
+        data.margin = {left: data.graphicWidth * 0.12 || 75, right: data.graphicWidth * 0.12 || 75, top: 5 + data.legendHeight, bottom: 0};  //will be used in terms of pixels (convention to call margin)
+        
         data.chartHeight = 0.66 * data.graphicHeight || 200;
-        data.chartWidth = 0.88 * data.graphicWidth || 550;
+        data.chartWidth = 0.88 * data.graphicWidth - data.margin.left || 550;
 
-        data.margin = {left: 50, right: 50, top: 5 + data.legendHeight, bottom: 0};  //will be used in terms of pixels (convention to call margin)
-
-
-        // function that makes '3 digit month'-'4 digit year' into JS date
-        data.parseDate = d3.timeParse('%b-%Y');
-        // function that makes history timestamp into JS date
-        data.getJSDateFromTimestamp = d3.timeParse('%d-%b-%y %I:%M:%S.%L %p UTC%Z');
 
 
         // GATHER AND FORMAT MONTHLY DATA //
@@ -219,16 +217,15 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         
 
         // GET HISTORY DATA //
-
-        return data.actualTrendHistoryOrd.get({ //FROM ACTUAL HISTORY TABLE
-            ok: function () {
-                const thisTable = this;
+        return widget.resolve(data.actualTrendHistoryOrd)
+            .then(actualTrendTable => {
                 // get facets off of 'actualTrend' table
-                const facets = thisTable.getCol('value').getFacets();
-                data.unitsLabel = facets.get('units');
+                const facets = actualTrendTable.getCol('value').getFacets();
+                data.unitsLabel = facets.get('units').toString() || 'Fake Units';                
                 data.precision = facets.get('precision');
+
                 //get data off of table
-                thisTable.cursor({
+                return actualTrendTable.cursor({
                     limit: 700000,  // default is 10
                     each: function (row, index) {
                       const timestamp = row.get('timestamp').toString().toUpperCase();
@@ -243,76 +240,69 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                       });
                     }
                   });
-            }
-        })
-        .then(() => {
-            return data.baselineTrendHistoryOrd.get({   //FROM BASELINE HISTORY TABLE
-                ok: function () {
-                    const thisTable = this;
-                    thisTable.cursor({
-                        limit: 700000,  // default is 10
-                        each: function (row, index) {
-                          const timestamp = row.get('timestamp').toString().toUpperCase();
-                          const rowValue = row.get('value');
+            })
+            .then(() => widget.resolve(data.baselineHistoryOrd))
+            .then(baselineTrendTable => {
+                return baselineTrendTable.cursor({
+                    limit: 700000,  // default is 10
+                    each: function (row, index) {
+                    const timestamp = row.get('timestamp').toString().toUpperCase();
+                    const rowValue = row.get('value');
 
-                          data.last12DatesSeperated.forEach((date, index) => {
-                            if (timestamp.indexOf(date.month)) {
-                                data.baselineData[index].count++;
-                                data.baselineData[index].total += rowValue;
-                            }
-                          });
+                    data.last12DatesSeperated.forEach((date, index) => {
+                        if (timestamp.indexOf(date.month)) {
+                            data.baselineData[index].count++;
+                            data.baselineData[index].total += rowValue;
                         }
-                      });
-                }
-            });
-        })
-        .then(() => {
-            return data.targetTrendHistoryOrd.get({     //FROM TARGET HISTORY TABLE
-                ok: function () {
-                    const thisTable = this;
-                    thisTable.cursor({
-                        limit: 700000,  // default is 10
-                        each: function (row, index) {
-                          const timestamp = row.get('timestamp').toString().toUpperCase();
-                          const rowValue = row.get('value');
+                    });
+                    }
+                });
+            })
+            .then(() => widget.resolve(data.targetHistoryOrd))
+            .then(targetTrendTable => {
+                return targetTrendTable.cursor({
+                    limit: 10,  // default is 10            // // // //// // // //// // CHANGE BACK TO 70000  // // // //// // // //// // // //// // // //
+                    each: function (row, index) {
+                    const timestamp = row.get('timestamp').toString().toUpperCase();
+                    const rowValue = row.get('value');
 
-                          data.last12DatesSeperated.forEach((date, index) => {
-                            if (timestamp.indexOf(date.month)) {
-                                data.targetData[index].count++;
-                                data.targetData[index].total += rowValue;
-                            }
-                          });
+                    data.last12DatesSeperated.forEach((date, index) => {
+                        if (timestamp.indexOf(date.month)) {
+                            data.targetData[index].count++;
+                            data.targetData[index].total += rowValue;
+                            if (date.month === 'MAR') {alert('matched target month. Updated this month\'s obj to: ' + data.targetData[index].month + ' ' + data.targetData[index].total);}
                         }
-                      });
-                }
-            });
-        })
-        .then(() => {   // UTILIZE ACCUMULATED DATA AND RETURN DATA OBJECT TO PASS TO RENDER FUNC //
-            data.last12DatesSeperated.forEach((date, index) => {
-                data.targetData[index].value = data.targetData[index].total / data.targetData[index].count;
-                data.baselineData[index].value = data.baselineData[index].total / data.baselineData[index].count;
-                data.actualData[index].value = data.actualData[index].total / data.actualData[index].count;
-              });
-            data.actualTrendsValues = data.actualData.map(data => data.value);
-            data.baselineValues = data.baselineData.map(data => data.value);
-            data.targetValues = data.targetData.map(data => data.value);
+                    });
+                    }
+                });
+            })
+            .then(() => {   // UTILIZE ACCUMULATED DATA AND RETURN DATA OBJECT TO PASS TO RENDER FUNC //
+                data.last12DatesSeperated.forEach((date, index) => {
+                    alert('targetData Obj:' + 'total: ' + data.targetData[index].total + 'count: ' + data.targetData[index].count);
+                    data.targetData[index].value = data.targetData[index].total / data.targetData[index].count || 0;
+                    data.baselineData[index].value = data.baselineData[index].total / data.baselineData[index].count || 0;
+                    data.actualData[index].value = data.actualData[index].total / data.actualData[index].count || 0;
+                });
+                data.actualTrendsValues = data.actualData.map(data => data.value);
+                data.baselineValues = data.baselineData.map(data => data.value);
+                data.targetValues = data.targetData.map(data => data.value);
 
-            const allValues = data.baselineValues.concat(data.actualTrendsValues, data.targetValues);
-            data.range = d3.extent(allValues);
+                const allValues = data.baselineValues.concat(data.actualTrendsValues, data.targetValues);
+                data.range = d3.extent(allValues);
 
-            const highestYtick = data.range[1] + 0.2;
-            data.yTickInterval = highestYtick / 4;
-            data.yTickValues = [0, data.yTickInterval, data.yTickInterval * 2, data.yTickInterval * 3, highestYtick];
+                const highestYtick = data.range[1] + 0.2;
+                data.yTickInterval = highestYtick / 4;
+                data.yTickValues = [0, data.yTickInterval, data.yTickInterval * 2, data.yTickInterval * 3, highestYtick];
 
-            data.enterData = [
-                {category: 'baseline', displayName: 'Baseline', color: data.baselineColor, opacity: data.baselineFillOpacity, data: data.baselineData, active: true},
-                {category: 'target', displayName: 'Target', color: data.targetColor, opacity: data.targetFillOpacity, data: data.targetData, active: true},
-                {category: 'actual', displayName: 'Actual', color: data.actualTrendColor, opacity: data.actualTrendFillOpacity, data: data.actualData, active: true}
-            ];
+                data.enterData = [
+                    {category: 'baseline', displayName: 'Baseline', color: data.baselineColor, opacity: data.baselineFillOpacity, data: data.baselineData, active: true},
+                    {category: 'target', displayName: 'Target', color: data.targetColor, opacity: data.targetFillOpacity, data: data.targetData, active: true},
+                    {category: 'actual', displayName: 'Actual', color: data.actualTrendColor, opacity: data.actualTrendFillOpacity, data: data.actualData, active: true}
+                ];
             
             
             // if '/' in unit's name, format xAxisUnitsLabel to have spaces around '/' and unitsLabel (for tooltip) not to
-	        let indexOfSlash = data.unitsLabel.indexOf('/');
+            let indexOfSlash = data.unitsLabel.indexOf('/');
 	        data.xAxisUnitsLabel = data.unitsLabel;
 	
 	        if (indexOfSlash > 0) {
@@ -324,9 +314,13 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 	            if (data.unitsLabel[indexOfSlash - 1] !== ' ') data.xAxisUnitsLabel = data.xAxisUnitsLabel.slice(0,indexOfSlash) + ' ' + data.xAxisUnitsLabel.slice(indexOfSlash);
 	        }
             
-            alert('last .then in setupDefinitions run');
+            alert('actualData: ' + 'month: ' + data.actualData[11].month + 'value: ' + data.actualData[11].value);
+            alert('targetData: ' + 'month: ' + data.targetData[11].month + 'value: ' + data.targetData[11].value);
+            alert('baselineData: ' + 'month: ' + data.baselineData[11].month + 'value: ' + data.baselineData[11].value);
+
             return data;
-        });
+        })
+        .catch(err => alert('Ords not correctly set up. Causing error: ' + err));
     };
 
 
@@ -337,9 +331,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     ////////////////////////////////////////////////////////////////
 
     const renderWidget = data => {
-        alert('renderWidget run');                
         /* RENDER INITIALIZATION */
-        const svg = d3.select('.ModernEfficiencyGraph');
+        const svg = d3.select('svg');
+        
+        
+        // delete leftover elements from versions previously rendered
+        if (!svg.empty()) d3.selectAll('svg > *').remove();
+        
+        
         const backgroundRect = svg.append('rect')
             .attr('height', data.graphicHeight)
             .attr('width', data.graphicWidth)
@@ -347,11 +346,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             
             .attr('stroke', 'black');				// X!X!X!X!X!X!X!X!X!X!XX!X!X!X!X   REMOVE ONCE WORKING   X!X!X!X!X!X!X!X!X!X!X!X!X!X
             
-        const chartGroup = svg.append('g').attr('transform', `translate(${data.margin.left}, ${data.margin.top})`);  
+        const chartGroup = svg.append('g').attr('class', 'chartGroup').attr('transform', `translate(${data.margin.left}, ${data.margin.top})`);  
 
 
-        // delete leftover elements from versions previously rendered
-        if (!svg.empty()) d3.selectAll('.ModernEfficiencyGraph > *').remove();
 
 /************************************************* ADD ALL SVG ELEMENTS HERE **********************************************************/
         /* SCALES AND GENERATORS */
@@ -360,7 +357,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .range([data.chartHeight, 0]);
 
         const xScale = d3.scaleTime()  // scaling function
-            .domain([data.parseDate(data.last12Dates[0]), data.parseDate(data.last12Dates[11])])  // [min, max] data Month-Year's as JS dates
+            .domain([parseDate(data.last12Dates[0]), parseDate(data.last12Dates[11])])  // [min, max] data Month-Year's as JS dates
             .range([0, data.chartWidth]);
 
         const yAxisGenerator = d3.axisLeft(yScale)  // axis generator (axis labels can be left, right, top, bottom in relation to line).
@@ -373,13 +370,13 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .tickFormat(d3.timeFormat('%b-%y'));
 
         const areaPathGenerator = d3.area()  // area generator (generates path element)
-            .x((d, i) => xScale(data.parseDate(d.month + '-' + data.actualData[i].year)))  //data points on chart will be determined by scaling func, passing in date-parsed data element (i of dataYears) -- so that it matches up with x-axis scale
+            .x((d, i) => xScale(parseDate(d.month + '-' + data.actualData[i].year)))  //data points on chart will be determined by scaling func, passing in date-parsed data element (i of dataYears) -- so that it matches up with x-axis scale
             .y0(data.chartHeight) //bottom line of area ( where x axis would go for most area charts)
             .y1(d => yScale(d.value)) //top line of area (we'd take d off of the height because y works upside down by default if we did this w/o scale). y(d) is outputting the literal y position the datapoint should be in
             .curve(d3.curveCardinal);
 
         const topBorderPathGenerator = d3.line()
-            .x((d, i) => xScale(data.parseDate(d.month + '-' + data.actualData[i].year)))
+            .x((d, i) => xScale(parseDate(d.month + '-' + data.actualData[i].year)))
             .y(d => yScale(d.value))
             .curve(d3.curveCardinal);
 
@@ -414,7 +411,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         // (note event listeners that define many tooltip properties are in datapoints section)
         const tooltipRectWidth = data.chartWidth * 0.19 || 105;
         const tooltipRectHeight = data.chartHeight * 0.35 || 70;
-        const tooltipGroup = d3.select('svg').append('g');
+        const tooltipGroup = svg.append('g');
         const tooltipRect = tooltipGroup.append('rect')
             .attr('display', 'none')
             .style('position', 'absolute')
@@ -458,7 +455,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         chartGroup.append('text')
             .attr("transform", "rotate(-90)")
             .attr('x', 0)
-            .attr('y', data.margin.left * 0.3)
+            .attr('y', data.margin.left + (data.chartWidth * 0.013))
             .attr("text-anchor", "middle")
             .style('font', data.unitsFont)
             .attr('fill', data.unitsColor)
@@ -484,19 +481,19 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('fill', (d, i, node) => node[i].parentNode.__data__.color)
             .attr('stroke', 'white')
             .attr('stroke-width', data.dataPointStrokeWidth)
-            .attr('cx', (d, i) => xScale(data.parseDate(d.month + '-' + data.actualData[i].year)))
+            .attr('cx', (d, i) => xScale(parseDate(d.month + '-' + data.actualData[i].year)))
             .attr('cy', d => yScale(d.value))
             .attr('r', data.dataPointRadius);
 
         // rectangles for each month with event listeners to toggle TOOLTIPS and to toggle datapoints' highlighting
-        const monthRectWidth = xScale(data.parseDate(data.actualData[1].month + '-' + data.actualData[1].year)) - xScale(data.parseDate(data.actualData[0].month + '-' + data.actualData[0].year));
+        const monthRectWidth = xScale(parseDate(data.actualData[1].month + '-' + data.actualData[1].year)) - xScale(parseDate(data.actualData[0].month + '-' + data.actualData[0].year));
         chartGroup.selectAll('.monthRect')
             .data(data.actualData)
             .enter().append('rect')
             .attr('class', d => `monthRect ${d.month}Rect`)
             .attr('height', data.chartHeight)
             .attr('width', monthRectWidth)
-            .attr('x', d => xScale(data.parseDate(d.month + '-' + d.year)) - (monthRectWidth / 2))
+            .attr('x', d => xScale(parseDate(d.month + '-' + d.year)) - (monthRectWidth / 2))
             .attr('y', 0)
             .style('opacity', '0')
             .on('mouseover', function (d, i) {
@@ -595,7 +592,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     };
 
     function render(widget) {
-        alert('render run');
         return setupDefinitions(widget)
             .then(data => {
                 renderWidget(data);
@@ -609,7 +605,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 
     ModernEfficiencyGraph.prototype.doInitialize = function (element) {
         var that = this;
-        alert('doInitialize run');
         element.addClass("ModernEfficiencyGraphOuter");
 
         d3.select(element[0]).append('svg')
@@ -620,8 +615,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('height', "95%");
 
         that.getSubscriber().attach("changed", function (prop, cx) { render(that); });
-
-        render(that);
     };
 
 
@@ -629,8 +622,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     // Extra Widget Methods
     ////////////////////////////////////////////////////////////////
 
-    ModernEfficiencyGraph.prototype.doLayout = ModernEfficiencyGraph.prototype.doChanged = ModernEfficiencyGraph.prototype.doLoad = function () { render(this); };
+    ModernEfficiencyGraph.prototype.doLayout = ModernEfficiencyGraph.prototype.doLoad = function () { render(this); };
 
+	ModernEfficiencyGraph.prototype.doChanged = () => {};			// ADD BACK TO ABOVE AFTER TESTING //////
+	
     /* FOR FUTURE NOTE: 
     ModernEfficiencyGraph.prototype.doChanged = function (name, value) {
           if(name === "value") valueChanged += 'prototypeMethod - ';
