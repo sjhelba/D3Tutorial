@@ -4,12 +4,13 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     ////////////////////////////////////////////////////////////////
     // Define Widget Constructor & Add Exposed Properties
     ////////////////////////////////////////////////////////////////
-	
-    alert('version 10');
+
+    
     
     // function that makes '3 digit month'-'4 digit year' into JS date
     const parseDate = d3.timeParse('%b-%Y');
     const getJSDateFromTimestamp = d3.timeParse('%d-%b-%y %I:%M:%S.%L %p UTC%Z');
+    let active;
 
 
 
@@ -125,6 +126,18 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                 value: 11
             },
             {
+                name: 'yAxisTitlePadding',
+                value: 2
+            },
+            {
+                name: 'tooltipRectWidth',
+                value: 113
+            },
+            {
+                name: 'tooltipRectHeight',
+                value: 66
+            },
+            {
                 name: 'baselineHistoryOrd',
                 value: 'history:^SystemAnnualEfficiencyBaseline',
                 typeSpec: 'baja:Ord'
@@ -138,12 +151,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                 name: 'actualTrendHistoryOrd',
                 value: 'history:^SystemEfficiencyMeasured',
                 typeSpec: 'baja:Ord'
-            },
-            {
-                name: 'yAxisTitlePadding',
-                value: 20
             }
         ]);
+
+
 
         subscriberMixIn(that);
     };
@@ -160,7 +171,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         'actualTrendColor','baselineColor','targetColor','actualTrendFillOpacity','baselineFillOpacity','targetFillOpacity','backgroundColor',
         'dataPointRadius','dataPointStrokeWidth','areaPathStrokeWidth','unitsColor','unitsFont','xAxisFontColor','yAxisFontColor','legendFontColor',
         'xAxisFont','yAxisFont','legendFont','tooltipFont','tooltipPadding','legendPadding','legendSquareSize','baselineHistoryOrd','targetHistoryOrd',
-        'actualTrendHistoryOrd','tooltipFill'
+        'actualTrendHistoryOrd','tooltipFill', 'yAxisTitlePadding', 'tooltipRectWidth', 'tooltipRectHeight'
     ];
 
     const setupDefinitions = widget => {
@@ -269,7 +280,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .then(() => widget.resolve(data.targetHistoryOrd))
             .then(targetTrendTable => {
                 return targetTrendTable.cursor({
-                    limit: 10,  // default is 10            // // // //// // // //// // CHANGE BACK TO 70000  // // // //// // // //// // // //// // // //
+                    limit: 700000,  // default is 10
                     each: function (row, index) {
                       const timestamp = getJSDateFromTimestamp(row.get('timestamp'));
                       const rowMonthIndex = timestamp.getMonth();
@@ -279,7 +290,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                         if (rowMonthIndex === date.monthIndex) {
                             data.targetData[index].count++;
                             data.targetData[index].total += rowValue;
-                            if (date.monthIndex === 2) {alert('matched target month March. Updated this month\'s obj to: ' + data.targetData[index].month + ' ' + data.targetData[index].total);}
                         }
                     });
                     }
@@ -304,9 +314,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                 data.yTickValues = [0, data.yTickInterval, data.yTickInterval * 2, data.yTickInterval * 3, highestYtick];
 
                 data.enterData = [
-                    {category: 'baseline', displayName: 'Baseline', color: data.baselineColor, opacity: data.baselineFillOpacity, data: data.baselineData, active: true},
-                    {category: 'target', displayName: 'Target', color: data.targetColor, opacity: data.targetFillOpacity, data: data.targetData, active: true},
-                    {category: 'actual', displayName: 'Actual', color: data.actualTrendColor, opacity: data.actualTrendFillOpacity, data: data.actualData, active: true}
+                    {category: 'baseline', displayName: 'Baseline', color: data.baselineColor, opacity: data.baselineFillOpacity, data: data.baselineData},
+                    {category: 'target', displayName: 'Target', color: data.targetColor, opacity: data.targetFillOpacity, data: data.targetData},
+                    {category: 'actual', displayName: 'Actual', color: data.actualTrendColor, opacity: data.actualTrendFillOpacity, data: data.actualData}
                 ];
             
             
@@ -323,13 +333,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 	            if (data.unitsLabel[indexOfSlash - 1] !== ' ') data.xAxisUnitsLabel = data.xAxisUnitsLabel.slice(0,indexOfSlash) + ' ' + data.xAxisUnitsLabel.slice(indexOfSlash);
 	        }
             
-            alert('actualData: ' + 'month: ' + data.actualData[11].month + 'value: ' + data.actualData[11].value);
-            alert('targetData: ' + 'month: ' + data.targetData[11].month + 'value: ' + data.targetData[11].value);
-            alert('baselineData: ' + 'month: ' + data.baselineData[11].month + 'value: ' + data.baselineData[11].value);
-
+    
             return data;
         })
-        .catch(err => alert('Ords not correctly set up. Causing error: ' + err));
+        .catch(err => console.error('Error (ord info promise rejected): ' + err));
     };
 
 
@@ -351,10 +358,8 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         const backgroundRect = svg.append('rect')
             .attr('height', data.graphicHeight)
             .attr('width', data.graphicWidth)
-            .attr('fill', data.backgroundColor)
-            
-            .attr('stroke', 'black');				// X!X!X!X!X!X!X!X!X!X!XX!X!X!X!X   REMOVE ONCE WORKING   X!X!X!X!X!X!X!X!X!X!X!X!X!X
-            
+            .attr('fill', data.backgroundColor);
+                        
         const chartGroup = svg.append('g').attr('class', 'chartGroup').attr('transform', `translate(${data.margin.left}, ${data.margin.top})`);  
 
 
@@ -400,16 +405,18 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 
         // Area Paths
         categoryGroups.append('path')
-            .attr('d', d => areaPathGenerator(d.data)) 
+            .attr('d', d => areaPathGenerator(d.data))
+            .attr('class', d => d.category + ' area')
             .attr('fill', d => d.color)
-            .attr('fill-opacity', d => d.opacity);
-
+            .attr('opacity', d => active && active[d.category] || !active ? d.opacity : 0);
+            
         // Top Border For Area Paths
         categoryGroups.append('path')   
-            .attr('d', d => topBorderPathGenerator(d.data)) 
+            .attr('d', d => topBorderPathGenerator(d.data))
+            .attr('class', d => d.category + ' path')
             .attr('stroke', d => d.color)
             .attr('stroke-width', data.areaPathStrokeWidth)
-            .attr('stroke-opacity', '0.92')
+            .attr('opacity', d => active && active[d.category] || !active ? 0.92 : 0)
             .attr('fill', 'none');
 
 
@@ -418,16 +425,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 
         /* TOOLTIPS */
         // (note event listeners that define many tooltip properties are in datapoints section)
-        const tooltipRectWidth = data.chartWidth * 0.19 || 105;
-        const tooltipRectHeight = data.chartHeight * 0.35 || 70;
         const tooltipGroup = svg.append('g');
         const tooltipRect = tooltipGroup.append('rect')
             .attr('display', 'none')
             .style('position', 'absolute')
             .attr('fill', data.tooltipFill)
             .attr('fill-opacity', '0.9')
-            .attr('width', tooltipRectWidth)
-            .attr('height', tooltipRectHeight);
+            .attr('width', data.tooltipRectWidth)
+            .attr('height', data.tooltipRectHeight);
 
         // tooltips text
         const tooltipText = tooltipGroup.append('text').attr('dominant-baseline', 'hanging').style('font', data.tooltipFont);
@@ -460,12 +465,12 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         d3.selectAll('.axisY text').style('fill', data.yAxisFontColor).style('font', data.yAxisFont);
         d3.selectAll('.axisX text').style('fill', data.xAxisFontColor).style('font', data.xAxisFont);
 
-
         chartGroup.append('text')
             .attr("transform", "rotate(-90)")
             .attr('x', 0)
             .attr('y', data.yAxisTitlePadding)
             .attr("text-anchor", "middle")
+            .attr('dominant-baseline', 'hanging')
             .style('font', data.unitsFont)
             .attr('fill', data.unitsColor)
             .text(data.xAxisUnitsLabel);
@@ -480,7 +485,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         // groups of datapoints
         const dataPointsGroups = chartGroup.selectAll('circle')
             .data(data.enterData)
-            .enter().append('g').attr('class', d => `${d.category} dataPointGroup`);
+            .enter().append('g')
+            	.attr('class', d => `${d.category} dataPointGroup`)
+            	.attr('opacity', d => active && active[d.category] || !active ? 1 : 0);
 
         // datapoints
         dataPointsGroups.selectAll('.circle')
@@ -506,10 +513,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                 .attr('y', 20)      // 20 rather than 0 so as to include the x axis tick values
                 .style('opacity', '0')
                 .on('mouseover', function (d, i) {
-                    let xPos = Number(d3.select(this).attr('x')) + (tooltipRectWidth / 2.5);
+                    let xPos = Number(d3.select(this).attr('x')) + (data.tooltipRectWidth / 2.5);
                     xPos = xPos < data.margin.left ? data.margin.left + 5: xPos;
-                    xPos = xPos + tooltipRectWidth > data.margin.left + data.chartWidth ? data.margin.left + data.chartWidth - tooltipRectWidth : xPos;
-                    const yPos = data.chartHeight + data.margin.top - (tooltipRectHeight + 5);
+                    xPos = xPos + data.tooltipRectWidth > data.margin.left + data.chartWidth ? data.margin.left + data.chartWidth - data.tooltipRectWidth : xPos;
+                    const yPos = data.chartHeight + data.margin.top - (data.tooltipRectHeight + 5);
                     d3.selectAll('.' + d.month)
                         .attr('r', data.dataPointRadius * 1.5)
                         .attr('stroke-width', data.dataPointStrokeWidth * 1.5);
@@ -568,12 +575,16 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .enter().append('g')
             .attr('class', d => `${d.category}Legend category`)
             .attr('transform', (d, i) => `translate(5, ${-data.legendHeight + (data.legendSquareSize * i) + (data.legendPadding * (i + 1)) })`)
-            .on('click', (d) => {
-                const categoryOpacity = d.active ? 0 : 1;
-                const legendLineDecoration = d.active ? 'line-through' : 'none';
-                d3.selectAll(`.${d.category}`).style('opacity', categoryOpacity);
+            .on('click', d => {
+            	if (!active) active = {baseline: true, target: true, actual: true};
+                const opacity = active[d.category] ? {area: 0, path: 0, dataPoint: 0} : {area: d.opacity, path: 0.92, dataPoint: 1};
+                const legendLineDecoration = active[d.category] ? 'line-through' : 'none';
+                const elements = d3.selectAll(`.${d.category}`)
+                elements.filter('.area').style('opacity', opacity.area);
+                elements.filter('.path').style('opacity', opacity.path);
+                elements.filter('.dataPointGroup').style('opacity', opacity.dataPoint);
                 d3.select(`#${d.category}Text`).style('text-decoration', legendLineDecoration);
-                d.active = !d.active;
+                active[d.category] = !active[d.category];
             })
             .on('mouseover', function(d){
                 d3.select(`#${d.category}Text`).style('font-weight', 'bold');
@@ -596,11 +607,13 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('x', data.legendSquareSize + 10)
             .attr('y', data.legendSquareSize - 1)
             .attr('fill', data.legendFontColor)
-            .style('font', data.legendFont);
+            .style('font', data.legendFont)
+            .style('text-decoration', d => active && active[d.category] || !active ? 'none' : 'line-through');
 
     };
 
     function render(widget) {
+        // invoking setupDefinitions, then returning value from successful promise to renderWidget func
         return setupDefinitions(widget)
             .then(data => {
                 renderWidget(data);
@@ -631,9 +644,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     // Extra Widget Methods
     ////////////////////////////////////////////////////////////////
 
-    ModernEfficiencyGraph.prototype.doLayout = ModernEfficiencyGraph.prototype.doLoad = function () { render(this); };
-
-	ModernEfficiencyGraph.prototype.doChanged = () => {};			// ADD BACK TO ABOVE AFTER TESTING //////
+    ModernEfficiencyGraph.prototype.doLayout = ModernEfficiencyGraph.prototype.doChanged = ModernEfficiencyGraph.prototype.doLoad = function () { render(this); };
 	
     /* FOR FUTURE NOTE: 
     ModernEfficiencyGraph.prototype.doChanged = function (name, value) {
