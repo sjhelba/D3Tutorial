@@ -6,10 +6,11 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     ////////////////////////////////////////////////////////////////
 
     
-    
     // function that makes '3 digit month'-'4 digit year' into JS date
     const parseDate = d3.timeParse('%b-%Y');
+    
     const getJSDateFromTimestamp = d3.timeParse('%d-%b-%y %I:%M:%S.%L %p UTC%Z');
+    
     let active;
 
 
@@ -137,25 +138,10 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                 name: 'tooltipRectHeight',
                 value: 66
             },
-            {
-                name: 'baselineHistoryOrd',     // TODO: Remove
-                value: 'history:^SystemAnnualEfficiencyBaseline',
-                typeSpec: 'baja:Ord'
-            },
-            {
-                name: 'projectedHistoryOrd',    // TODO: Remove
-                value: 'history:^SystemAnnualEfficiencyProjected',
-                typeSpec: 'baja:Ord'
-            },
-            {
-                name: 'measuredHistoryOrd',     // TODO: Remove
-                value: 'history:^SystemEfficiencyMeasured',
-                typeSpec: 'baja:Ord'
-            },
-            // {                                    // TODO: Uncomment
-            //     name: 'systemName',
-            //     value: 'SystemName'
-            // }
+            { 
+                name: 'systemName',
+                value: 'SystemName'
+            }
         ]);
 
 
@@ -174,8 +160,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     const widgetProperties = [
         'measuredColor','baselineColor','projectedColor','measuredFillOpacity','baselineFillOpacity','projectedFillOpacity','backgroundColor',
         'dataPointRadius','dataPointStrokeWidth','areaPathStrokeWidth','unitsColor','unitsFont','xAxisFontColor','yAxisFontColor','legendFontColor',
-        'xAxisFont','yAxisFont','legendFont','tooltipFont','tooltipPadding','legendPadding','legendSquareSize','baselineHistoryOrd','projectedHistoryOrd',
-        'measuredHistoryOrd','tooltipFill', 'yAxisTitlePadding', 'tooltipRectWidth', 'tooltipRectHeight'
+        'xAxisFont','yAxisFont','legendFont','tooltipFont','tooltipPadding','legendPadding','legendSquareSize', 'systemName', 'tooltipFill', 'yAxisTitlePadding', 'tooltipRectWidth', 'tooltipRectHeight'
     ];
 
     const setupDefinitions = widget => {
@@ -185,8 +170,8 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 
         // FROM JQ //
         const jq = widget.jq();
-        data.graphicWidth = jq.width() // * 0.95 || 625;
-        data.graphicHeight = jq.height() // * 0.95 || 300;
+        data.graphicWidth = jq.width() || 625;
+        data.graphicHeight = jq.height() || 300;
 
         // DEFINITIONS CALCULATED FROM USER AND JQ PROPERTIES //
         data.legendHeight = 0.166 * data.graphicHeight || 50;
@@ -238,7 +223,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         
 
         // GET HISTORY DATA //
-        return widget.resolve(data.measuredHistoryOrd)  // TODO change to: return widget.resolve(`history:^${data.systemName}_MeasuredEfficiency`)
+        return widget.resolve(`history:^${data.systemName}_MeasuredEfficiency`)
             .then(measuredTable => {
                 // get facets off of 'measured' table
                 const facets = measuredTable.getCol('value').getFacets();
@@ -263,7 +248,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                     }
                   });
             })
-            .then(() => widget.resolve(data.baselineHistoryOrd))    // TODO change to: .then(() => widget.resolve(`history:^${data.systemName}_BaselineEfficiency`)) 
+            .then(() => widget.resolve(`history:^${data.systemName}_BaselineEfficiency`)) 
             .then(baselineTrendTable => {
                 return baselineTrendTable.cursor({
                     limit: 700000,  // default is 10
@@ -281,7 +266,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                     }
                 });
             })
-            .then(() => widget.resolve(data.projectedHistoryOrd))   // TODO change to: .then(() => widget.resolve(`history:^${data.systemName}_ProjectedEfficiency`)) 
+            .then(() => widget.resolve(`history:^${data.systemName}_ProjectedEfficiency`)) 
             .then(projectedTrendTable => {
                 return projectedTrendTable.cursor({
                     limit: 700000,  // default is 10
@@ -352,17 +337,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 
     const renderWidget = data => {
         /* RENDER INITIALIZATION */
+        d3.select('.ModernEfficiencyGraphOuter').style('background-color', data.backgroundColor);
         const svg = d3.select('svg');
         
         
         // delete leftover elements from versions previously rendered
         if (!svg.empty()) d3.selectAll('svg > *').remove();
         
-        
-        const backgroundRect = svg.append('rect')
-            .attr('height', data.graphicHeight)
-            .attr('width', data.graphicWidth)
-            .attr('fill', data.backgroundColor);
+
                         
         const chartGroup = svg.append('g').attr('class', 'chartGroup').attr('transform', `translate(${data.margin.left}, ${data.margin.top})`);  
 
@@ -565,14 +547,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('class', 'legend')
             .attr('transform', `translate(${0, data.chartWidth - data.legendWidth})`);
 
-        // legend box
-        legend.append('rect')
-            .attr('height', data.legendHeight)
-            .attr('width', data.legendWidth)
-            .attr('fill', data.backgroundColor)
-            .attr('y', -data.legendHeight);
-
-
         // create groups for each category with click listeners to toggle hide and hover listeners to toggle bold text
         const legendCategories = legend.selectAll('g')
             .data(data.enterData)
@@ -583,7 +557,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                     if (!active) active = {baseline: true, projected: true, measured: true};
                     const opacity = active[d.category] ? {area: 0, path: 0, dataPoint: 0} : {area: d.opacity, path: 0.92, dataPoint: 1};
                     const legendLineDecoration = active[d.category] ? 'line-through' : 'none';
-                    const elements = d3.selectAll(`.${d.category}`)
+                    const elements = d3.selectAll(`.${d.category}`);
                     elements.filter('.area').style('opacity', opacity.area);
                     elements.filter('.path').style('opacity', opacity.path);
                     elements.filter('.dataPointGroup').style('opacity', opacity.dataPoint);
