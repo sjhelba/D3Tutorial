@@ -148,6 +148,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
 
       const data = {};
       const setupDefinitions = widget => {
+      
           // FROM USER // 
           props.forEach(prop => {data[prop] = widget.properties().getValue(prop);});
       
@@ -243,19 +244,11 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           
           lastValue = lastValue || lastValue === 0 ? lastValue : minValForArc;
           
+          d3.select('.ModernGaugeOuter').style('background-color', data.backgroundColor);
           const svg = d3.select('svg');
           
           // delete leftover elements from versions previously rendered
           if (!svg.empty()) d3.selectAll('svg > *').remove();
-          
-          const backgroundRect = svg.append('rect')
-                .attr('id', 'background')
-                .attr('x', 0)
-                .attr('y', 0)
-                .attr('width', '100%')
-                .attr('height', '100%')
-                .attr('stroke-width', '0')
-                .attr('fill', data.backgroundColor);
           
           const borderCircle = svg.append('circle')
               .attr('id', 'borderCircle')
@@ -338,7 +331,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
               .attr('width', "95%")
               .attr('height', "95%");
       
-          that.getSubscriber().attach("changed", function() {render(that);});
+		  that.getSubscriber().attach("changed", function(prop, cx) {render(that);});
+          
+          render(that);
       };
   
   
@@ -347,6 +342,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
   ////////////////////////////////////////////////////////////////
   
       ModernGauge.prototype.doLayout = ModernGauge.prototype.doChanged = ModernGauge.prototype.doLoad = function() {render(this);};
+      
+      /* FOR FUTURE NOTE: 
+      ModernGauge.prototype.doChanged = function (name, value) {
+      	if(name === "value") valueChanged += 'prototypeMethod - ';
+      	render(this);
+      };
+      */ 
+      
       ModernGauge.prototype.doDestroy = function() {this.jq().removeClass("ModernGauge");};
   
       return ModernGauge;
