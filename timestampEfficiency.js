@@ -10,8 +10,6 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     const parseDate = d3.timeParse('%b-%Y');
     
     const getJSDateFromTimestamp = d3.timeParse('%d-%b-%y %I:%M:%S.%L %p UTC%Z');
-    
-    let active;
 
 
 
@@ -396,7 +394,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('d', d => areaPathGenerator(d.data))
             .attr('class', d => d.category + ' area')
             .attr('fill', d => d.color)
-            .attr('opacity', d => active && active[d.category] || !active ? d.opacity : 0);
+            .attr('opacity', d => widget.active && widget.active[d.category] || !widget.active ? d.opacity : 0);
             
         // Top Border For Area Paths
         categoryGroups.append('path')   
@@ -404,7 +402,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('class', d => d.category + ' path')
             .attr('stroke', d => d.color)
             .attr('stroke-width', data.areaPathStrokeWidth)
-            .attr('opacity', d => active && active[d.category] || !active ? 0.92 : 0)
+            .attr('opacity', d => widget.active && widget.active[d.category] || !widget.active ? 0.92 : 0)
             .attr('fill', 'none');
 
 
@@ -475,7 +473,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .data(data.enterData)
             .enter().append('g')
             	.attr('class', d => `${d.category} dataPointGroup`)
-            	.attr('opacity', d => active && active[d.category] || !active ? 1 : 0);
+            	.attr('opacity', d => widget.active && widget.active[d.category] || !widget.active ? 1 : 0);
 
         // datapoints
         dataPointsGroups.selectAll('.circle')
@@ -556,15 +554,15 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                 .attr('class', d => `${d.category}Legend category`)
                 .attr('transform', (d, i) => `translate(5, ${-data.legendHeight + (data.legendSquareSize * i) + (data.legendPadding * (i + 1)) })`)
                 .on('click', d => {
-                    if (!active) active = {baseline: true, projected: true, measured: true};
-                    const opacity = active[d.category] ? {area: 0, path: 0, dataPoint: 0} : {area: d.opacity, path: 0.92, dataPoint: 1};
-                    const legendLineDecoration = active[d.category] ? 'line-through' : 'none';
+                    if (!widget.active) widget.active = {baseline: true, projected: true, measured: true};
+                    const opacity = widget.active[d.category] ? {area: 0, path: 0, dataPoint: 0} : {area: d.opacity, path: 0.92, dataPoint: 1};
+                    const legendLineDecoration = widget.active[d.category] ? 'line-through' : 'none';
                     const elements = svg.selectAll(`.${d.category}`);
                     elements.filter('.area').style('opacity', opacity.area);
                     elements.filter('.path').style('opacity', opacity.path);
                     elements.filter('.dataPointGroup').style('opacity', opacity.dataPoint);
                     svg.select(`#${d.category}Text`).style('text-decoration', legendLineDecoration);
-                    active[d.category] = !active[d.category];
+                    widget.active[d.category] = !widget.active[d.category];
                 })
                 .on('mouseover', function(d){
                     svg.select(`#${d.category}Text`).style('font-weight', 'bold');
@@ -588,7 +586,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('y', data.legendSquareSize - 1)
             .attr('fill', data.legendFontColor)
             .style('font', data.legendFont)
-            .style('text-decoration', d => active && active[d.category] || !active ? 'none' : 'line-through');
+            .style('text-decoration', d => widget.active && widget.active[d.category] || !widget.active ? 'none' : 'line-through');
 
     };
 
@@ -616,6 +614,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('width', "95%")
             .attr('height', "95%");
 
+        that.active = undefined;
         that.getSubscriber().attach("changed", function (prop, cx) { render(that) });
     };
 
