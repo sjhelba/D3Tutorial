@@ -335,14 +335,16 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     // Render Widget (invoke setupDefinitions() and, using returned data, append D3 elements into SVG)
     ////////////////////////////////////////////////////////////////
 
-    const renderWidget = data => {
+    const renderWidget = (widget, data) => {
         /* RENDER INITIALIZATION */
-        d3.select('.ModernEfficiencyGraphOuter').style('background-color', data.backgroundColor);
-        const svg = d3.select('svg');
+
+        const svg = widget.svg;
         
+        d3.select(svg.node().parentNode).style('background-color', data.backgroundColor)
+
         
         // delete leftover elements from versions previously rendered
-        if (!svg.empty()) d3.selectAll('svg > *').remove();
+        if (!svg.empty()) svg.selectAll('*').remove();
         
 
                         
@@ -426,12 +428,12 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         tooltipText.selectAll('.value')
             .data(data.enterData)
             .enter().append('tspan')
-            .attr('class', 'value')
-            .attr('id', d => `${d.category}Tspan`)
-            .attr('fill', d => d.color);
-        const baselineTspan = d3.select('#baselineTspan');
-        const projectedTspan = d3.select('#projectedTspan');
-        const measuredTspan = d3.select('#measuredTspan');
+            	.attr('class', 'value')
+           		.attr('id', d => `${d.category}Tspan`)
+            	.attr('fill', d => d.color);
+        const baselineTspan = svg.select('#baselineTspan');
+        const projectedTspan = svg.select('#projectedTspan');
+        const measuredTspan = svg.select('#measuredTspan');
 
 
 
@@ -448,8 +450,8 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
             .attr('transform', `translate(0,${data.chartHeight})`)
             .call(xAxisGenerator);
 
-        d3.selectAll('.axisY text').style('fill', data.yAxisFontColor).style('font', data.yAxisFont);
-        d3.selectAll('.axisX text').style('fill', data.xAxisFontColor).style('font', data.xAxisFont);
+        svg.selectAll('.axisY text').style('fill', data.yAxisFontColor).style('font', data.yAxisFont);
+        svg.selectAll('.axisX text').style('fill', data.xAxisFontColor).style('font', data.xAxisFont);
 
         chartGroup.append('text')
             .attr("transform", "rotate(-90)")
@@ -503,7 +505,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                     xPos = xPos < data.margin.left ? data.margin.left + 5: xPos;
                     xPos = xPos + data.tooltipRectWidth > data.margin.left + data.chartWidth ? data.margin.left + data.chartWidth - data.tooltipRectWidth : xPos;
                     const yPos = data.chartHeight + data.margin.top - (data.tooltipRectHeight + 5);
-                    d3.selectAll('.' + d.month)
+                    svg.selectAll('.' + d.month)
                         .attr('r', data.dataPointRadius * 1.5)
                         .attr('stroke-width', data.dataPointStrokeWidth * 1.5);
                     tooltipRect
@@ -524,7 +526,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                         .attr('y', yPos + (data.tooltipPadding * 3));
                 })
                 .on('mouseout', function(d) {
-                    d3.selectAll('.' + d.month)
+                    svg.selectAll('.' + d.month)
                         .attr('r', data.dataPointRadius)
                         .attr('stroke-width', data.dataPointStrokeWidth);
                     tooltipRect.attr('display', 'none');
@@ -557,18 +559,18 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
                     if (!active) active = {baseline: true, projected: true, measured: true};
                     const opacity = active[d.category] ? {area: 0, path: 0, dataPoint: 0} : {area: d.opacity, path: 0.92, dataPoint: 1};
                     const legendLineDecoration = active[d.category] ? 'line-through' : 'none';
-                    const elements = d3.selectAll(`.${d.category}`);
+                    const elements = svg.selectAll(`.${d.category}`);
                     elements.filter('.area').style('opacity', opacity.area);
                     elements.filter('.path').style('opacity', opacity.path);
                     elements.filter('.dataPointGroup').style('opacity', opacity.dataPoint);
-                    d3.select(`#${d.category}Text`).style('text-decoration', legendLineDecoration);
+                    svg.select(`#${d.category}Text`).style('text-decoration', legendLineDecoration);
                     active[d.category] = !active[d.category];
                 })
                 .on('mouseover', function(d){
-                    d3.select(`#${d.category}Text`).style('font-weight', 'bold');
+                    svg.select(`#${d.category}Text`).style('font-weight', 'bold');
                 })
                 .on('mouseout', function(d){
-                    d3.select(`#${d.category}Text`).style('font-weight', 'normal');
+                    svg.select(`#${d.category}Text`).style('font-weight', 'normal');
                 });
 
 
@@ -594,7 +596,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         // invoking setupDefinitions, then returning value from successful promise to renderWidget func
         return setupDefinitions(widget)
             .then(data => {
-                renderWidget(data);
+                renderWidget(widget, data);
             });
     }
 
@@ -607,14 +609,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
         var that = this;
         element.addClass("ModernEfficiencyGraphOuter");
 
-        d3.select(element[0]).append('svg')
+        that.svg = d3.select(element[0]).append('svg')
             .attr('class', 'ModernEfficiencyGraph')
             .attr('top', 0)
             .attr('left', 0)
             .attr('width', "95%")
             .attr('height', "95%");
 
-        that.getSubscriber().attach("changed", function (prop, cx) { render(that); });
+        that.getSubscriber().attach("changed", function (prop, cx) { render(that) });
     };
 
 
@@ -631,7 +633,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
     };
     */
 
-    ModernEfficiencyGraph.prototype.doDestroy = function () { this.jq().removeClass("ModernEfficiencyGraph"); };
+    ModernEfficiencyGraph.prototype.doDestroy = function () {
+        this.jq().removeClass("ModernEfficiencyGraphOuter");
+    };
 
     return ModernEfficiencyGraph;
 });

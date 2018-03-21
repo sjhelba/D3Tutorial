@@ -4,7 +4,9 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
   ////////////////////////////////////////////////////////////////
   // Define Widget Constructor & Add Exposed Properties
   ////////////////////////////////////////////////////////////////
-  
+    let modernGaugeCounter = 0;
+
+
     var ModernGauge = function() {
       var that = this;
       Widget.apply(this, arguments);
@@ -141,14 +143,15 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
               'unitsColor', 'valueColor'
       ];
       
-      let cx, cy, width, height, borderCircleRadius,startAngle,endAngle,gaugeArcOuterRadius,
-          gaugeArcInnerRadius, minValForArc, maxValForArc, valForGaugeArc, minVal, maxVal,
-          efficiencyColorScale, angleScale, gaugeArcGenerator, titleArcGenerator,
-          unitsArcGenerator, arcTween, lastValue;
 
-      const data = {};
       const setupDefinitions = widget => {
-      
+        let cx, cy, width, height, borderCircleRadius,startAngle,endAngle,gaugeArcOuterRadius,
+        gaugeArcInnerRadius, minValForArc, maxValForArc, valForGaugeArc, minVal, maxVal,
+        efficiencyColorScale, angleScale, gaugeArcGenerator, titleArcGenerator,
+        unitsArcGenerator, arcTween;
+
+        const data = {};
+        
           // FROM USER // 
           props.forEach(prop => {data[prop] = widget.properties().getValue(prop);});
       
@@ -157,6 +160,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           height = jq.height() - 2 || 300;
       
            // CALCULATED OR HARD-CODED DEFINITIONS //
+          data.lastValue = widget.valToStartArcTransition;
           cx = width / 2;
           cy = height / 2;
           borderCircleRadius = height < width ? (height / 2.5) - data.borderCircleWidth : (width / 2.5) - data.borderCircleWidth;
@@ -187,7 +191,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
           }
           
           // to provide start point for next transition to use
-          data.valToStartArcTransition = valForGaugeArc;
+          widget.valToStartArcTransition = valForGaugeArc;
           
           // if efficiencyGauge marked true, inverts min and max vals
           [minVal,maxVal] = data.efficiencyGauge ? [data.maxVal,data.minVal] : [data.minVal,data.maxVal];
@@ -228,6 +232,14 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
               datum.endAngle = d3.interpolate(datum.endAngle, newAngle)(t);
               return gaugeArcGenerator(datum);
           };
+          const tempObj = {
+            cx, cy, width, height, borderCircleRadius,startAngle,endAngle,gaugeArcOuterRadius,
+            gaugeArcInnerRadius, minValForArc, maxValForArc, valForGaugeArc, minVal, maxVal,
+            efficiencyColorScale, angleScale, gaugeArcGenerator, titleArcGenerator,
+            unitsArcGenerator, arcTween
+          }
+          Object.keys(tempObj).forEach(prop => {data[prop] = tempObj[prop]});
+          return data;
       };
   
   
@@ -238,80 +250,95 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
   ////////////////////////////////////////////////////////////////
   
       function render(widget) {
-          lastValue = data.valToStartArcTransition;
-          
-          setupDefinitions(widget);
-          
-          lastValue = lastValue || lastValue === 0 ? lastValue : minValForArc;
-          
-          d3.select('.ModernGaugeOuter').style('background-color', data.backgroundColor);
-          const svg = d3.select('svg');
-          
-          // delete leftover elements from versions previously rendered
-          if (!svg.empty()) d3.selectAll('svg > *').remove();
-          
-          const borderCircle = svg.append('circle')
-              .attr('id', 'borderCircle')
-              .attr('cx', cx)
-              .attr('cy', cy)
-              .attr('r', borderCircleRadius)
-              .attr('fill', data.borderCircleFillColor)
-              .attr('stroke', data.borderCircleColor)
-              .attr('stroke-width', data.borderCircleWidth);
-              
-          const valueOutput = svg.append('text')
-              .attr('class', 'valueOutput')
-              .attr('x', cx)
-              .attr('y', cy)
-              .attr('text-anchor', 'middle')
-              .attr('dominant-baseline', 'middle')
-              .attr('fill', data.valueColor)
-              .style('font', data.valueFont)
-              // formats output num using num of decimal places user input
-              .text(d3.format(`,.${data.decimalPlaces}f`)(data.value));
-          
-          const chartGroup = svg.append('g')
-              .attr('class', 'chartGroup')
-              .attr('transform', `translate(${cx}, ${cy})`);
-          
-          const gaugeArc = chartGroup.append('path')
-              .attr('id', 'gaugeArc')
-              .datum({endAngle: angleScale(lastValue)})
-              // fill nominal color for non-efficiency gauge or 3 color scale for efficiency gauge. Starts with min val color prior to transition
-              .attr('fill', data.efficiencyGauge ? efficiencyColorScale(lastValue) : data.nominalGaugeArcColor)
-              .attr('d', gaugeArcGenerator(angleScale(lastValue)))
-              .transition()
-                  .duration(1000)
-                  // if efficiency graph, transition from min val scale color to actual val's scale color
-                  .attr('fill', data.efficiencyGauge ? efficiencyColorScale(data.value) : data.nominalGaugeArcColor)
-                  // gradually transition end angle from minValForArc to true val angle
-                  .attrTween('d', arcTween(angleScale(valForGaugeArc)));
-          
-          const titlePath = chartGroup.append('path')
-              .attr('id', 'titlePath')
-              .attr('d', titleArcGenerator())
-              .attr('fill', 'none');
-          
-          const unitsPath = chartGroup.append('path')
-              .attr('id', 'unitsPath')
-              .attr('d', unitsArcGenerator())
-              .attr('fill', 'none');
-          
-          const titleOutput = chartGroup.append("text").append("textPath")
-              .attr("xlink:href", "#titlePath") // ID of path text follows
-              .style("text-anchor","middle")
-              .attr("startOffset", "20%")
-              .style('font', data.titleFont)
-              .attr('fill', data.titleColor)
-              .text(data.gaugeTitle);
-          
-          const unitsOutput = chartGroup.append("text").append("textPath")
-              .attr("xlink:href", "#unitsPath") // ID of path text follows
-              .style("text-anchor","end")
-              .attr("startOffset", "50%")
-              .style('font', data.unitsFont)
-              .attr('fill', data.unitsColor)
-              .text(data.units);
+        
+        function renderWidget (widget, data) {
+            let {
+                cx, cy, width, height, borderCircleRadius,startAngle,endAngle,gaugeArcOuterRadius,
+                gaugeArcInnerRadius, minValForArc, maxValForArc, valForGaugeArc, minVal, maxVal,
+                efficiencyColorScale, angleScale, gaugeArcGenerator, titleArcGenerator,
+                unitsArcGenerator, arcTween
+            } = data;
+            
+            data.lastValue = data.lastValue || data.lastValue === 0 ? data.lastValue : minValForArc;
+            
+            const svg = widget.svg;
+
+            d3.select(svg.node().parentNode).style('background-color', data.backgroundColor)
+
+
+            // delete leftover elements from versions previously rendered
+            if (!svg.empty()) svg.selectAll("*").remove();
+            
+
+            const borderCircle = svg.append('circle')
+                .attr('id', 'borderCircle')
+                .attr('cx', cx)
+                .attr('cy', cy)
+                .attr('r', borderCircleRadius)
+                .attr('fill', data.borderCircleFillColor)
+                .attr('stroke', data.borderCircleColor)
+                .attr('stroke-width', data.borderCircleWidth);
+                
+            const valueOutput = svg.append('text')
+                .attr('class', 'valueOutput')
+                .attr('x', cx)
+                .attr('y', cy)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', data.valueColor)
+                .style('font', data.valueFont)
+                // formats output num using num of decimal places user input
+                .text(d3.format(`,.${data.decimalPlaces}f`)(data.value));
+            
+            const chartGroup = svg.append('g')
+                .attr('class', 'chartGroup')
+                .attr('transform', `translate(${cx}, ${cy})`);
+            
+
+
+            const gaugeArc = chartGroup.append('path')
+                .attr('id', 'gaugeArc')
+                .datum({endAngle: angleScale(data.lastValue)})
+                // fill nominal color for non-efficiency gauge or 3 color scale for efficiency gauge. Starts with min val color prior to transition
+                .attr('fill', data.efficiencyGauge ? efficiencyColorScale(data.lastValue) : data.nominalGaugeArcColor)
+                .attr('d', gaugeArcGenerator(angleScale(data.lastValue)))
+                .transition()
+                    .duration(1000)
+                    // if efficiency graph, transition from min val scale color to actual val's scale color
+                    .attr('fill', data.efficiencyGauge ? efficiencyColorScale(data.value) : data.nominalGaugeArcColor)
+                    // gradually transition end angle from minValForArc to true val angle
+                    .attrTween('d', arcTween(angleScale(valForGaugeArc)));
+            
+            const titlePath = chartGroup.append('path')
+                .attr('id', widget.uniqueId + '_titlePath')
+                .attr('d', titleArcGenerator())
+                .attr('fill', 'none');
+            
+            const unitsPath = chartGroup.append('path')
+                .attr('id', widget.uniqueId + '_unitsPath')
+                .attr('d', unitsArcGenerator())
+                .attr('fill', 'none');
+            
+            const titleOutput = chartGroup.append("text").append("textPath")
+                .attr("xlink:href", '#' + widget.uniqueId + '_titlePath') // ID of path text follows
+                .style("text-anchor","middle")
+                .attr("startOffset", "20%")
+                .style('font', data.titleFont)
+                .attr('fill', data.titleColor)
+                .text(data.gaugeTitle);
+            
+            const unitsOutput = chartGroup.append("text").append("textPath")
+                .attr("xlink:href", '#' + widget.uniqueId + '_unitsPath') // ID of path text follows
+                .style("text-anchor","end")
+                .attr("startOffset", "50%")
+                .style('font', data.unitsFont)
+                .attr('fill', data.unitsColor)
+                .text(data.units);
+        }
+        
+        const theData = setupDefinitions(widget);
+        renderWidget(widget, theData);
+        
       }
     
     
@@ -321,16 +348,19 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
   
       ModernGauge.prototype.doInitialize = function(element) {
           var that = this;
-          
+
           element.addClass("ModernGaugeOuter");
       
-          d3.select(element[0]).append('svg')
+          that.svg = d3.select(element[0]).append('svg')
               .attr('class', 'ModernGauge')
               .attr('top', 0)
               .attr('left', 0)
               .attr('width', "95%")
               .attr('height', "95%");
       
+          that.uniqueId = 'ModernGauge_' + modernGaugeCounter;
+          modernGaugeCounter++;
+          
 		  that.getSubscriber().attach("changed", function(prop, cx) {render(that);});
           
           render(that);
@@ -350,7 +380,7 @@ define(['bajaux/Widget', 'bajaux/mixin/subscriberMixIn', 'nmodule/tekScratch/rc/
       };
       */ 
       
-      ModernGauge.prototype.doDestroy = function() {this.jq().removeClass("ModernGauge");};
+      ModernGauge.prototype.doDestroy = function() {this.jq().removeClass("ModernGaugeOuter");};
   
       return ModernGauge;
   });
